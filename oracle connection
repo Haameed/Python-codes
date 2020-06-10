@@ -1,0 +1,35 @@
+import cx_Oracle
+import os
+
+
+output_path = '/var/log/oradb_output.csv'
+connection = None
+db_user = "user"
+db_pass = "userpasswd"
+server_ip = "192.168.200.10"
+service_name = "dw_data"
+try:
+    connection = cx_Oracle.connect(
+        db_user,
+        db_pass,
+        f"{server_ip}/{service_name}",
+        encoding="UTF-8")
+except cx_Oracle.Error as error:
+    print(error)
+else:
+    os.unlink(output_path)
+    output = open(output_path, "a+")
+    conn = connection.cursor()
+    conn.execute(
+        "SELECT a.dte, max(a.ugw), sum(a.ocs) FROM vw_compare_ocs_u2000 a where dte > trunc(sysdate - 31 ) group by dte order by dte")
+    for row in conn:
+        date_time = row[0]
+        u2000_usage = row[1]
+        ocs_usage = row[2]
+        row_result = f"{date_time},{u2000_usage},{ocs_usage}\n"
+        output.write(row_result)
+    output.close()
+finally:
+    if connection:
+        conn.close()
+        connection.close()
